@@ -1,4 +1,4 @@
-name: KiCad CI
+name: KiCad CI (v9)
 
 on:
   push:
@@ -22,10 +22,10 @@ on:
       - "**/*.kicad_wks"
       - "**/sym-lib-table"
       - "**/fp-lib-table"
+  workflow_dispatch:  # allows manual run
 
 env:
-  # 🔧 CHANGE THIS TO MATCH YOUR PROJECT:
-  # (without extension)
+  # 🔧 Change this to your KiCad project name (no extension)
   PROJECT_NAME: test
 
 jobs:
@@ -33,47 +33,57 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      #- name: Install KiCad
-      #  run: |
-      #    sudo add-apt-repository --yes ppa:kicad/kicad-8.0-releases
-      #    sudo apt update
-      #    sudo apt install --yes kicad kicad-cli
+      - name: Install KiCad 9
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository --yes ppa:kicad/kicad-9.0-releases
+          sudo apt-get update
+          sudo apt-get install --install-recommends -y kicad
 
-      - name: Prepare output folder
+      - name: Verify kicad-cli
+        run: |
+          echo "KiCad CLI version:"
+          kicad-cli --version
+
+      - name: Make output directory
         run: mkdir -p outputs
 
-      # -------------------------------------------------
-      # All commands use $PROJECT_NAME automatically 🎉
-      # -------------------------------------------------
+      # ===============================
+      # KiCad CLI operations
+      # ===============================
 
-      - name: Export schematic PDF
+      - name: Export Schematic PDF
         run: |
-          kicad-cli sch export pdf "$PROJECT_NAME.kicad_sch" \
+          kicad-cli sch export pdf "${{ env.PROJECT_NAME }}.kicad_sch" \
             -o outputs/schematic.pdf
 
       - name: Export PCB PDF
         run: |
-          kicad-cli pcb export pdf "$PROJECT_NAME.kicad_pcb" \
+          kicad-cli pcb export pdf "${{ env.PROJECT_NAME }}.kicad_pcb" \
             -o outputs/pcb.pdf
 
-      - name: Export BOM
+      - name: Generate BOM (CSV)
         run: |
-          kicad-cli sch export bom "$PROJECT_NAME.kicad_sch" \
+          kicad-cli sch export bom "${{ env.PROJECT_NAME }}.kicad_sch" \
             -o outputs/bom.csv
 
       - name: Run ERC
         run: |
-          kicad-cli sch run-erc "$PROJECT_NAME.kicad_sch" \
+          kicad-cli sch run-erc "${{ env.PROJECT_NAME }}.kicad_sch" \
             --output outputs/erc.txt
 
       - name: Run DRC
         run: |
-          kicad-cli pcb run-drc "$PROJECT_NAME.kicad_pcb" \
+          kicad-cli pcb run-drc "${{ env.PROJECT_NAME }}.kicad_pcb" \
             --output outputs/drc.txt
+
+      # ===============================
+      # Output artifacts
+      # ===============================
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
