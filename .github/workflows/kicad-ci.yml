@@ -1,118 +1,142 @@
-name: KiCad 9 CI
+name: KiCad CI
 
 on:
   push:
-    branches: [ "main" ]
     paths:
-      - "*.kicad_sch"
-      - "*.kicad_pcb"
-      - "*.kicad_pro"
-      - "*.kicad_sym"
-      - "*.kicad_mod"
-      - "sym-lib-table"
-      - "fp-lib-table"
-
+      - "**/*.kicad_sch"
+      - "**/*.kicad_pcb"
+      - "**/*.kicad_pro"
+      - "**/*.kicad_prl"
+      - "**/*.kicad_sym"
+      - "**/*.kicad_mod"
+      - ".github/workflows/kicad-ci.yml"
   pull_request:
     paths:
-      - "*.kicad_sch"
-      - "*.kicad_pcb"
-      - "*.kicad_pro"
-      - "*.kicad_sym"
-      - "*.kicad_mod"
-      - "sym-lib-table"
-      - "fp-lib-table"
-
-  workflow_dispatch:
-
-env:
-  PROJECT_NAME: test   # <-- change this to match your .kicad_sch file
+      - "**/*.kicad_sch"
+      - "**/*.kicad_pcb"
+      - "**/*.kicad_pro"
+      - ".github/workflows/kicad-ci.yml"
 
 jobs:
-  build:
+  kicad-ci:
     runs-on: ubuntu-latest
 
-    container:
-      image: ghcr.io/kicad/kicad:9.0
-      options: --user root
+    env:
+      PROJECT_NAME: "test"   # <-- CHANGE THIS TO MATCH YOUR .kicad_pro/.kicad_sch FILE
 
     steps:
-      - name: Checkout repo
+      # -------------------------------------------------------------
+      # CHECKOUT
+      # -------------------------------------------------------------
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show KiCad version
-        run: kicad-cli --version
-
-      - name: Prepare output directory
-        run: mkdir -p outputs
-
-
-      # -----------------------------------------------------------------
-      # CHECK WHETHER THE PCB FILE EXISTS AND HAS LAYERS
-      # -----------------------------------------------------------------
-      - id: check_pcb
-        name: Detect PCB layers
+      # -------------------------------------------------------------
+      # INSTALL KICAD 9 (ONLY IF NOT INSTALLED)
+      # -------------------------------------------------------------
+      - name: Check if KiCad 9 is installed
+        id: check_kicad
         run: |
-          PCB_FILE="${PROJECT_NAME}.kicad_pcb"
-
-          if [ ! -f "$PCB_FILE" ]; then
-            echo "HAS_PCB=false" >> $GITHUB_ENV
-            echo "No PCB file found. Skipping PCB tasks."
-            exit 0
-          fi
-
-          if grep -q "(layer" "$PCB_FILE"; then
-            echo "HAS_PCB=true" >> $GITHUB_ENV
-            echo "PCB contains layers."
+          if command -v kicad-cli >/dev/null 2>&1; then
+            echo "installed=true" >> $GITHUB_OUTPUT
           else
-            echo "HAS_PCB=false" >> $GITHUB_ENV
-            echo "PCB contains NO layers. Skipping PCB tasks."
+            echo "installed=false" >> $GITHUB_OUTPUT
           fi
 
-
-      # -----------------------------------------------------------------
-      # SCHEMATIC EXPORTS (ALWAYS RUN)
-      # -----------------------------------------------------------------
-      - name: Export schematic PDF
+      - name: Install KiCad 9
+        if: steps.check_kicad.outputs.installed == 'false'
         run: |
-          kicad-cli sch export pdf \
-            "${PROJECT_NAME}.kicad_sch" \
-            -o outputs/schematic.pdf
+          sudo add-apt-repository -y ppa:kicad/kicad-9.0-releases
+          sudo apt-get update
+          sudo apt-get install -y kicad kicad-cli
 
-      - name: Generate BOM
+      # -------------------------------------------------------------
+      # VALIDATE PROJECT FILES
+      # -------------------------------------------------------------
+      - name: Find KiCad project files
+        id: find_files
         run: |
-          kicad-cli sch export bom \
-            "${PROJECT_NAME}.kicad_sch" \
-            -o outputs/bom.csv
+          SCH=$(find . -maxdepth 2 -name "${PROJECT_NAME}.kicad_sch" | head -n 1)
+          PCB=$(find . -maxdepth 2 -name "${PROJECT_NAME}.kicad_pcb" | head -n 1)
+          echo "sch_file=$SCH" >> $GITHUB_OUTPUT
+          echo "pcb_file=$PCB" >> $GITHUB_OUTPUT
 
-      - name: Run ERC
+          if [ -z "$SCH" ]; then
+            echo "ERROR: Schematic file not found."
+            exit 1
+          fi
+
+      # -------------------------------------------------------------
+      # CREATE OUTPUT FOLDERS
+      # -------------------------------------------------------------
+      - name: Prepare output directories
         run: |
-          kicad-cli sch erc \
-            "${PROJECT_NAME}.kicad_sch" \
-            --output outputs/erc.txt
+          mkdir -p outputs/schematic
+          mkdir -p outputs/pcb
+          mkdir -p outputs/pdf
 
+      # -------------------------------------------------------------
+      # RUN ERC (FAILS IF ERRORS FOUND)
+      # -------------------------------------------------------------
+      - name: Run ERC (Fail on errors)
+        run: |
+          echo "Running ERC..."
+          kicad-cli sch erc "${PROJECT_NAME}.kicad_sch" \
+            --output outputs/schematic/erc_report.txt
+        continue-on-error: false
 
-      # -----------------------------------------------------------------
-      # PCB EXPORTS (ONLY IF HAS_PCB = true)
-      # -----------------------------------------------------------------
+      # -------------------------------------------------------------
+      # EXPORT SCHEMATIC PDF
+      # -------------------------------------------------------------
+      - name: Export Schematic PDF
+        run: |
+          echo "Exporting schematic PDF..."
+          kicad-cli sch export pdf "${PROJECT_NAME}.kicad_sch" \
+            --output outputs/pdf/schematic.pdf
+
+      # -------------------------------------------------------------
+      # CHECK PCB LAYER COUNT
+      # -------------------------------------------------------------
+      - name: Check PCB layers
+        id: check_layers
+        run: |
+          if [ -n "${{ steps.find_files.outputs.pcb_file }}" ]; then
+            LAYERS=$(kicad-cli pcb export info "${PROJECT_NAME}.kicad_pcb" | grep "Copper Layers" | awk '{print $3}')
+            echo "layers=$LAYERS" >> $GITHUB_OUTPUT
+            if [ "$LAYERS" -gt 0 ]; then
+              echo "has_layers=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_layers=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_layers=false" >> $GITHUB_OUTPUT
+          fi
+
+      # -------------------------------------------------------------
+      # RUN DRC (FAIL IF ERRORS, ONLY IF PCB HAS LAYERS)
+      # -------------------------------------------------------------
+      - name: Run DRC (Fail on errors)
+        if: steps.check_layers.outputs.has_layers == 'true'
+        run: |
+          echo "Running DRC..."
+          kicad-cli pcb drc "${PROJECT_NAME}.kicad_pcb" \
+            --output outputs/pcb/drc_report.txt
+        continue-on-error: false
+
+      # -------------------------------------------------------------
+      # EXPORT PCB PDF (ONLY IF BOARD HAS LAYERS)
+      # -------------------------------------------------------------
       - name: Export PCB PDF
-        if: env.HAS_PCB == 'true'
+        if: steps.check_layers.outputs.has_layers == 'true'
         run: |
-          kicad-cli pcb export pdf \
-            "${PROJECT_NAME}.kicad_pcb" \
-            -o outputs/pcb.pdf
+          echo "Exporting PCB PDF..."
+          kicad-cli pcb export pdf "${PROJECT_NAME}.kicad_pcb" \
+            --output outputs/pdf/pcb.pdf
 
-      - name: Run DRC
-        if: env.HAS_PCB == 'true'
-        run: |
-          kicad-cli pcb drc \
-            "${PROJECT_NAME}.kicad_pcb" \
-            --output outputs/drc.txt
-
-
-      # -----------------------------------------------------------------
-      # ARTIFACT UPLOAD
-      # -----------------------------------------------------------------
-      - name: Upload KiCad outputs
+      # -------------------------------------------------------------
+      # UPLOAD ARTIFACTS
+      # -------------------------------------------------------------
+      - name: Upload KiCad artifacts
         uses: actions/upload-artifact@v4
         with:
           name: kicad-outputs
