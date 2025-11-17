@@ -1144,6 +1144,76 @@
 			)
 		)
 	)
+	(symbol
+		(lib_id "Device:R")
+		(at 97.0193 124.4175 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f82cbd30-4a18-411b-94be-b95acdbe9343")
+		(property "Reference" "R5"
+			(at 99.5593 123.1474 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "R"
+			(at 99.5593 125.6874 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 95.2413 124.4175 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 97.0193 124.4175 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 97.0193 124.4175 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "9375aefb-a392-446f-b07c-b91df4d12d23")
+		)
+		(pin "2"
+			(uuid "db178c2a-5b7f-465c-bf5f-ad7fc9844a88")
+		)
+		(instances
+			(project "test"
+				(path "/836c9f6e-8dd0-464b-ba6e-14d2ae20270a"
+					(reference "R5")
+					(unit 1)
+				)
+			)
+		)
+	)
 	(sheet_instances
 		(path "/"
 			(page "1")
