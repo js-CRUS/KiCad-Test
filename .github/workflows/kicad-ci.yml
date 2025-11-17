@@ -15,61 +15,42 @@ on:
   workflow_dispatch:
 
 env:
-  # Change this to your project base name (no extension)
-  PROJECT_NAME: test
+  PROJECT_NAME: your_project_name
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    # ⭐ Best practice: Use prebuilt KiCad 9 container (fast!)
     container:
       image: ghcr.io/kicad/kicad:9.0
+      options: --user root   # ⭐ REQUIRED FIX
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify KiCad CLI version
+      - name: Verify KiCad CLI
         run: kicad-cli --version
 
-      - name: Make output directory
+      - name: Make output dir
         run: mkdir -p outputs
 
-      # -------------------------
-      # KiCad export steps
-      # -------------------------
-
       - name: Export schematic PDF
-        run: |
-          kicad-cli sch export pdf "$PROJECT_NAME.kicad_sch" \
-            -o outputs/schematic.pdf
+        run: kicad-cli sch export pdf "$PROJECT_NAME.kicad_sch" -o outputs/schematic.pdf
 
       - name: Export PCB PDF
-        run: |
-          kicad-cli pcb export pdf "$PROJECT_NAME.kicad_pcb" \
-            -o outputs/pcb.pdf
+        run: kicad-cli pcb export pdf "$PROJECT_NAME.kicad_pcb" -o outputs/pcb.pdf
 
       - name: Generate BOM
-        run: |
-          kicad-cli sch export bom "$PROJECT_NAME.kicad_sch" \
-            -o outputs/bom.csv
+        run: kicad-cli sch export bom "$PROJECT_NAME.kicad_sch" -o outputs/bom.csv
 
       - name: Run ERC
-        run: |
-          kicad-cli sch run-erc "$PROJECT_NAME.kicad_sch" \
-            --output outputs/erc.txt
+        run: kicad-cli sch run-erc "$PROJECT_NAME.kicad_sch" --output outputs/erc.txt
 
       - name: Run DRC
-        run: |
-          kicad-cli pcb run-drc "$PROJECT_NAME.kicad_pcb" \
-            --output outputs/drc.txt
+        run: kicad-cli pcb run-drc "$PROJECT_NAME.kicad_pcb" --output outputs/drc.txt
 
-      # -------------------------
-      # Upload artifacts
-      # -------------------------
-
-      - name: Upload KiCad build outputs
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: kicad-outputs
