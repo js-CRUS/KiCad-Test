@@ -93,29 +93,37 @@ jobs:
       - name: Check PCB layers
         id: check_layers
         run: |
-          PCB="${{ steps.find_files.outputs.pcb_file }}"
+          PCB_PATH="${{ steps.find_files.outputs.pcb_file }}"
+          echo "PCB_PATH = '$PCB_PATH'"
 
-          if [ -z "$PCB" ]; then
+          if [ -z "$PCB_PATH" ]; then
             echo "has_pcb=false" >> $GITHUB_OUTPUT
             echo "has_layers=false" >> $GITHUB_OUTPUT
+            echo "No PCB path found" 1>&2
             exit 0
           fi
 
           echo "has_pcb=true" >> $GITHUB_OUTPUT
 
-          # Extract copper layer count
-          LAYERS=$(kicad-cli pcb export info --format json "$PCB" | jq '.copper_layers')
+          # Export PCB info as JSON
+          INFO_JSON=$(kicad-cli pcb export info --format json "$PCB_PATH")
+          echo "INFO_JSON = $INFO_JSON"
 
-          # Trim whitespace
+          # Use jq to extract copper_layers; fallback to 0
+          LAYERS=$(echo "$INFO_JSON" | jq '.copper_layers // 0')
+          echo "Raw LAYERS = '$LAYERS'"
+
+          # Trim whitespace/newlines
           LAYERS=$(echo "$LAYERS" | xargs)
 
-          echo "layers=$LAYERS" >> $GITHUB_OUTPUT
+          echo "Trimmed LAYERS = '$LAYERS'"
 
-          if [ "$LAYERS" -gt 0 ]; then
+          if [ "$LAYERS" -gt 0 ] 2>/dev/null; then
             echo "has_layers=true" >> $GITHUB_OUTPUT
           else
             echo "has_layers=false" >> $GITHUB_OUTPUT
           fi
+
       - name: Debug PCB flags
         run: |
           echo "has_pcb = '${{ steps.check_layers.outputs.has_pcb }}'"
