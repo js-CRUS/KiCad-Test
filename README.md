@@ -1,3 +1,5 @@
+![Build Status](https://img.shields.io/github/actions/workflow/status/js-CRUS/KiCad-Test/kicad-ci.yml)
+
 # KiCad CI Automation
 
 This repository includes a GitHub Actions workflow that automatically validates and exports output files for a KiCad 9 project. Whenever schematic or PCB files change, the workflow runs ERC/DRC checks, generates fabrication outputs, and uploads them as downloadable artifacts.
