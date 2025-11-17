@@ -37,11 +37,11 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install KiCad
-        run: |
-          sudo add-apt-repository --yes ppa:kicad/kicad-8.0-releases
-          sudo apt update
-          sudo apt install --yes kicad kicad-cli
+      #- name: Install KiCad
+      #  run: |
+      #    sudo add-apt-repository --yes ppa:kicad/kicad-8.0-releases
+      #    sudo apt update
+      #    sudo apt install --yes kicad kicad-cli
 
       - name: Prepare output folder
         run: mkdir -p outputs
