@@ -105,8 +105,10 @@ jobs:
       # -------------------------------------------------------------
       - name: Export PCB PDF
         run: |
-          kicad-cli pcb export pdf "${PROJECT_NAME}.kicad_pcb" \
-            --output outputs/pdf/pcb.pdf
+          kicad-cli pcb export pdf project.kicad_pcb \
+          --layers F.Cu B.Cu \
+          --output copper_layers.pdf
+
 
 
 
