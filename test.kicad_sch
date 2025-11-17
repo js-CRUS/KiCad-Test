@@ -928,6 +928,76 @@
 	)
 	(symbol
 		(lib_id "Device:R")
+		(at 124.5802 134.8179 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "755b4eec-6928-444a-beff-2e4b8c669c3a")
+		(property "Reference" "R7"
+			(at 127.1202 133.5478 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "R"
+			(at 127.1202 136.0878 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 122.8022 134.8179 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 124.5802 134.8179 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 124.5802 134.8179 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "66116352-c4b1-4570-9d12-0daf409d6dc5")
+		)
+		(pin "2"
+			(uuid "188a00d2-6e5f-4bed-9a51-e19f593899b1")
+		)
+		(instances
+			(project "test"
+				(path "/836c9f6e-8dd0-464b-ba6e-14d2ae20270a"
+					(reference "R7")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
 		(at 74.93 78.74 0)
 		(unit 1)
 		(exclude_from_sim no)
