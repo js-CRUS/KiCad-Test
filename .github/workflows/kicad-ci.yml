@@ -1,4 +1,4 @@
-name: KiCad CI (v9)
+name: KiCad CI 
 
 on:
   push:
@@ -22,10 +22,10 @@ on:
       - "**/*.kicad_wks"
       - "**/sym-lib-table"
       - "**/fp-lib-table"
-  workflow_dispatch:  # allows manual run
+  workflow_dispatch:
 
 env:
-  # 🔧 Change this to your KiCad project name (no extension)
+  # Change this to your project name (no extension)
   PROJECT_NAME: test
 
 jobs:
@@ -36,8 +36,28 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install KiCad 9
+      # ============================================================
+      # Install KiCad 9 ONLY if it is not already installed
+      # ============================================================
+      - name: Check & Install KiCad 9
         run: |
+          echo "Checking if KiCad is already installed..."
+          
+          if command -v kicad-cli >/dev/null 2>&1; then
+            echo "kicad-cli found."
+            
+            VERSION=$(kicad-cli --version | head -n 1 | grep -o '9\.[0-9]*\.[0-9]*' || true)
+
+            if [ -n "$VERSION" ]; then
+              echo "KiCad version $VERSION already installed — skipping installation."
+              exit 0
+            else
+              echo "KiCad is installed but not version 9.x — installing correct version..."
+            fi
+          else
+            echo "kicad-cli not found — installing KiCad 9..."
+          fi
+
           sudo apt-get update
           sudo apt-get install -y software-properties-common
           sudo add-apt-repository --yes ppa:kicad/kicad-9.0-releases
@@ -45,18 +65,16 @@ jobs:
           sudo apt-get install --install-recommends -y kicad
 
       - name: Verify kicad-cli
-        run: |
-          echo "KiCad CLI version:"
-          kicad-cli --version
+        run: kicad-cli --version
 
-      - name: Make output directory
+      - name: Prepare output directory
         run: mkdir -p outputs
 
-      # ===============================
-      # KiCad CLI operations
-      # ===============================
+      # ============================================================
+      # KiCad CLI export steps
+      # ============================================================
 
-      - name: Export Schematic PDF
+      - name: Export schematic PDF
         run: |
           kicad-cli sch export pdf "${{ env.PROJECT_NAME }}.kicad_sch" \
             -o outputs/schematic.pdf
@@ -66,7 +84,7 @@ jobs:
           kicad-cli pcb export pdf "${{ env.PROJECT_NAME }}.kicad_pcb" \
             -o outputs/pcb.pdf
 
-      - name: Generate BOM (CSV)
+      - name: Generate BOM
         run: |
           kicad-cli sch export bom "${{ env.PROJECT_NAME }}.kicad_sch" \
             -o outputs/bom.csv
@@ -80,10 +98,6 @@ jobs:
         run: |
           kicad-cli pcb run-drc "${{ env.PROJECT_NAME }}.kicad_pcb" \
             --output outputs/drc.txt
-
-      # ===============================
-      # Output artifacts
-      # ===============================
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
