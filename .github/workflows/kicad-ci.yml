@@ -87,48 +87,7 @@ jobs:
           kicad-cli sch export pdf "${PROJECT_NAME}.kicad_sch" \
             --output outputs/pdf/schematic.pdf
 
-      # -------------------------------------------------------------
-      # CHECK PCB LAYER COUNT
-      # -------------------------------------------------------------
-      - name: Check PCB layers
-        id: check_layers
-        run: |
-          PCB_PATH="${{ steps.find_files.outputs.pcb_file }}"
-          echo "PCB_PATH = '$PCB_PATH'"
-
-          if [ -z "$PCB_PATH" ]; then
-            echo "has_pcb=false" >> $GITHUB_OUTPUT
-            echo "has_layers=false" >> $GITHUB_OUTPUT
-            echo "No PCB path found" 1>&2
-            exit 0
-          fi
-
-          echo "has_pcb=true" >> $GITHUB_OUTPUT
-
-          # Export PCB info as JSON
-          INFO_JSON=$(kicad-cli pcb export info --format json "$PCB_PATH")
-          echo "INFO_JSON = $INFO_JSON"
-
-          # Use jq to extract copper_layers; fallback to 0
-          LAYERS=$(echo "$INFO_JSON" | jq '.copper_layers // 0')
-          echo "Raw LAYERS = '$LAYERS'"
-
-          # Trim whitespace/newlines
-          LAYERS=$(echo "$LAYERS" | xargs)
-
-          echo "Trimmed LAYERS = '$LAYERS'"
-
-          if [ "$LAYERS" -gt 0 ] 2>/dev/null; then
-            echo "has_layers=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_layers=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Debug PCB flags
-        run: |
-          echo "has_pcb = '${{ steps.check_layers.outputs.has_pcb }}'"
-          echo "has_layers = '${{ steps.check_layers.outputs.has_layers }}'"
-          echo "layers raw = '${{ steps.check_layers.outputs.layers }}'"
+     
 
       # -------------------------------------------------------------
       # RUN DRC (FAIL IF ERRORS, ONLY IF PCB HAS LAYERS)
