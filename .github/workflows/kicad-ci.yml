@@ -93,18 +93,25 @@ jobs:
       - name: Check PCB layers
         id: check_layers
         run: |
-          if [ -n "${{ steps.find_files.outputs.pcb_file }}" ]; then
-            LAYERS=$(kicad-cli pcb export info "${PROJECT_NAME}.kicad_pcb" | grep "Copper Layers" | awk '{print $3}')
-            echo "layers=$LAYERS" >> $GITHUB_OUTPUT
-            if [ "$LAYERS" -gt 0 ]; then
-              echo "has_layers=true" >> $GITHUB_OUTPUT
-            else
-              echo "has_layers=false" >> $GITHUB_OUTPUT
-            fi
+          PCB="${{ steps.find_files.outputs.pcb_file }}"
+          
+          if [ -z "$PCB" ]; then
+            echo "has_layers=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Checking PCB layer count..."
+          
+          # Extract copper layer count from JSON
+          LAYERS=$(kicad-cli pcb export info --format json "$PCB" | jq '.copper_layers')
+
+          echo "layers=$LAYERS" >> $GITHUB_OUTPUT
+          
+          if [ "$LAYERS" -gt 0 ]; then
+            echo "has_layers=true" >> $GITHUB_OUTPUT
           else
             echo "has_layers=false" >> $GITHUB_OUTPUT
           fi
-
       # -------------------------------------------------------------
       # RUN DRC (FAIL IF ERRORS, ONLY IF PCB HAS LAYERS)
       # -------------------------------------------------------------
