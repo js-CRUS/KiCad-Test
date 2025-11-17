@@ -1,105 +1,75 @@
-name: KiCad CI 
+name: KiCad 9 CI
 
 on:
   push:
     branches: [ "main" ]
     paths:
-      - "**/*.kicad_pro"
-      - "**/*.kicad_sch"
-      - "**/*.kicad_pcb"
-      - "**/*.kicad_sym"
-      - "**/*.kicad_mod"
-      - "**/*.kicad_wks"
+      - "**/*.kicad_*"
       - "**/sym-lib-table"
       - "**/fp-lib-table"
   pull_request:
     paths:
-      - "**/*.kicad_pro"
-      - "**/*.kicad_sch"
-      - "**/*.kicad_pcb"
-      - "**/*.kicad_sym"
-      - "**/*.kicad_mod"
-      - "**/*.kicad_wks"
+      - "**/*.kicad_*"
       - "**/sym-lib-table"
       - "**/fp-lib-table"
   workflow_dispatch:
 
 env:
-  # Change this to your project name (no extension)
-  PROJECT_NAME: test
+  # Change this to your project base name (no extension)
+  PROJECT_NAME: your_project_name
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    # ⭐ Best practice: Use prebuilt KiCad 9 container (fast!)
+    container:
+      image: ghcr.io/kicad/kicad:9.0
+
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ============================================================
-      # Install KiCad 9 ONLY if it is not already installed
-      # ============================================================
-      - name: Check & Install KiCad 9
-        run: |
-          echo "Checking if KiCad is already installed..."
-          
-          if command -v kicad-cli >/dev/null 2>&1; then
-            echo "kicad-cli found."
-            
-            VERSION=$(kicad-cli --version | head -n 1 | grep -o '9\.[0-9]*\.[0-9]*' || true)
-
-            if [ -n "$VERSION" ]; then
-              echo "KiCad version $VERSION already installed — skipping installation."
-              exit 0
-            else
-              echo "KiCad is installed but not version 9.x — installing correct version..."
-            fi
-          else
-            echo "kicad-cli not found — installing KiCad 9..."
-          fi
-
-          sudo apt-get update
-          sudo apt-get install -y software-properties-common
-          sudo add-apt-repository --yes ppa:kicad/kicad-9.0-releases
-          sudo apt-get update
-          sudo apt-get install --install-recommends -y kicad
-
-      - name: Verify kicad-cli
+      - name: Verify KiCad CLI version
         run: kicad-cli --version
 
-      - name: Prepare output directory
+      - name: Make output directory
         run: mkdir -p outputs
 
-      # ============================================================
-      # KiCad CLI export steps
-      # ============================================================
+      # -------------------------
+      # KiCad export steps
+      # -------------------------
 
       - name: Export schematic PDF
         run: |
-          kicad-cli sch export pdf "${{ env.PROJECT_NAME }}.kicad_sch" \
+          kicad-cli sch export pdf "$PROJECT_NAME.kicad_sch" \
             -o outputs/schematic.pdf
 
       - name: Export PCB PDF
         run: |
-          kicad-cli pcb export pdf "${{ env.PROJECT_NAME }}.kicad_pcb" \
+          kicad-cli pcb export pdf "$PROJECT_NAME.kicad_pcb" \
             -o outputs/pcb.pdf
 
       - name: Generate BOM
         run: |
-          kicad-cli sch export bom "${{ env.PROJECT_NAME }}.kicad_sch" \
+          kicad-cli sch export bom "$PROJECT_NAME.kicad_sch" \
             -o outputs/bom.csv
 
       - name: Run ERC
         run: |
-          kicad-cli sch run-erc "${{ env.PROJECT_NAME }}.kicad_sch" \
+          kicad-cli sch run-erc "$PROJECT_NAME.kicad_sch" \
             --output outputs/erc.txt
 
       - name: Run DRC
         run: |
-          kicad-cli pcb run-drc "${{ env.PROJECT_NAME }}.kicad_pcb" \
+          kicad-cli pcb run-drc "$PROJECT_NAME.kicad_pcb" \
             --output outputs/drc.txt
 
-      - name: Upload artifacts
+      # -------------------------
+      # Upload artifacts
+      # -------------------------
+
+      - name: Upload KiCad build outputs
         uses: actions/upload-artifact@v4
         with:
           name: kicad-outputs
