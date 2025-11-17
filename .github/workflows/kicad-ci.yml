@@ -93,9 +93,6 @@ jobs:
       # RUN DRC (FAIL IF ERRORS, ONLY IF PCB HAS LAYERS)
       # -------------------------------------------------------------
       - name: Run DRC (Fail on errors)
-        if: >
-          steps.check_layers.outputs.has_pcb == 'true' &&
-          steps.check_layers.outputs.has_layers == 'true'
         run: |
           kicad-cli pcb drc "${PROJECT_NAME}.kicad_pcb" \
             --output outputs/pcb/drc_report.txt
@@ -107,9 +104,6 @@ jobs:
       # EXPORT PCB PDF (ONLY IF BOARD HAS LAYERS)
       # -------------------------------------------------------------
       - name: Export PCB PDF
-        if: >
-          steps.check_layers.outputs.has_pcb == 'true' &&
-          steps.check_layers.outputs.has_layers == 'true'
         run: |
           kicad-cli pcb export pdf "${PROJECT_NAME}.kicad_pcb" \
             --output outputs/pdf/pcb.pdf
