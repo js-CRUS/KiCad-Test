@@ -4,7 +4,6 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      # Only run when KiCad files change in the PROJECT ROOT (same folder as .github)
       - "*.kicad_sch"
       - "*.kicad_pcb"
       - "*.kicad_pro"
@@ -26,16 +25,15 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_NAME: test   # <-- change this (no extension)
+  PROJECT_NAME: your_project_name   # <-- change this
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    # Use KiCad 9 prebuilt container, run as root to avoid checkout permission errors
     container:
       image: ghcr.io/kicad/kicad:9.0
-      options: --user root
+      options: --user root   # required for checkout permissions
 
     steps:
       - name: Checkout repository
@@ -47,39 +45,47 @@ jobs:
       - name: Prepare output directory
         run: mkdir -p outputs
 
-      # -----------------------
-      # KiCad CLI steps
-      # -----------------------
+      # -----------------------------------------------------
+      # CHECK IF PCB HAS LAYERS
+      # -----------------------------------------------------
+      - id: check_pcb
+        name: Detect PCB layers
+        run: |
+          if grep -q "(layer" "$PROJECT_NAME.kicad_pcb"; then
+            echo "HAS_PCB=true" >> $GITHUB_ENV
+            echo "PCB has layers. Processing PCB..."
+          else
+            echo "HAS_PCB=false" >> $GITHUB_ENV
+            echo "No PCB layers found. Skipping PCB steps."
+          fi
 
+      # -----------------------------------------------------
+      # SCHEMATIC EXPORT (always runs)
+      # -----------------------------------------------------
       - name: Export schematic PDF
-        run: |
-          kicad-cli sch export pdf "$PROJECT_NAME.kicad_sch" \
-            -o outputs/schematic.pdf
-
-      - name: Export PCB PDF
-        run: |
-          kicad-cli pcb export pdf "$PROJECT_NAME.kicad_pcb" \
-            -o outputs/pcb.pdf
+        run: kicad-cli sch export pdf "$PROJECT_NAME.kicad_sch" -o outputs/schematic.pdf
 
       - name: Generate BOM
-        run: |
-          kicad-cli sch export bom "$PROJECT_NAME.kicad_sch" \
-            -o outputs/bom.csv
+        run: kicad-cli sch export bom "$PROJECT_NAME.kicad_sch" -o outputs/bom.csv
 
       - name: Run ERC
-        run: |
-          kicad-cli sch run-erc "$PROJECT_NAME.kicad_sch" \
-            --output outputs/erc.txt
+        run: kicad-cli sch run-erc "$PROJECT_NAME.kicad_sch" --output outputs/erc.txt
+
+      # -----------------------------------------------------
+      # PCB EXPORT (only if HAS_PCB=true)
+      # -----------------------------------------------------
+
+      - name: Export PCB PDF
+        if: env.HAS_PCB == 'true'
+        run: kicad-cli pcb export pdf "$PROJECT_NAME.kicad_pcb" -o outputs/pcb.pdf
 
       - name: Run DRC
-        run: |
-          kicad-cli pcb run-drc "$PROJECT_NAME.kicad_pcb" \
-            --output outputs/drc.txt
+        if: env.HAS_PCB == 'true'
+        run: kicad-cli pcb run-drc "$PROJECT_NAME.kicad_pcb" --output outputs/drc.txt
 
-      # -----------------------
-      # Upload build artifacts
-      # -----------------------
-
+      # -----------------------------------------------------
+      # OUTPUT ARTIFACTS
+      # -----------------------------------------------------
       - name: Upload KiCad outputs
         uses: actions/upload-artifact@v4
         with:
