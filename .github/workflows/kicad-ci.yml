@@ -16,7 +16,7 @@ on:
 
 env:
   # Change this to your project base name (no extension)
-  PROJECT_NAME: your_project_name
+  PROJECT_NAME: test
 
 jobs:
   build:
