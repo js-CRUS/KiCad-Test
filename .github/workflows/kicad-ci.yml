@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_NAME: your_project_name   # <-- change this
+  PROJECT_NAME: test   # <-- change this
 
 jobs:
   build:
