@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_NAME: test   # <-- change this
+  PROJECT_NAME: your_project_name   # <-- change this to match your .kicad_sch file
 
 jobs:
   build:
@@ -33,59 +33,85 @@ jobs:
 
     container:
       image: ghcr.io/kicad/kicad:9.0
-      options: --user root   # required for checkout permissions
+      options: --user root
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Verify KiCad CLI
+      - name: Show KiCad version
         run: kicad-cli --version
 
       - name: Prepare output directory
         run: mkdir -p outputs
 
-      # -----------------------------------------------------
-      # CHECK IF PCB HAS LAYERS
-      # -----------------------------------------------------
+
+      # -----------------------------------------------------------------
+      # CHECK WHETHER THE PCB FILE EXISTS AND HAS LAYERS
+      # -----------------------------------------------------------------
       - id: check_pcb
         name: Detect PCB layers
         run: |
-          if grep -q "(layer" "$PROJECT_NAME.kicad_pcb"; then
-            echo "HAS_PCB=true" >> $GITHUB_ENV
-            echo "PCB has layers. Processing PCB..."
-          else
+          PCB_FILE="${PROJECT_NAME}.kicad_pcb"
+
+          if [ ! -f "$PCB_FILE" ]; then
             echo "HAS_PCB=false" >> $GITHUB_ENV
-            echo "No PCB layers found. Skipping PCB steps."
+            echo "No PCB file found. Skipping PCB tasks."
+            exit 0
           fi
 
-      # -----------------------------------------------------
-      # SCHEMATIC EXPORT (always runs)
-      # -----------------------------------------------------
+          if grep -q "(layer" "$PCB_FILE"; then
+            echo "HAS_PCB=true" >> $GITHUB_ENV
+            echo "PCB contains layers."
+          else
+            echo "HAS_PCB=false" >> $GITHUB_ENV
+            echo "PCB contains NO layers. Skipping PCB tasks."
+          fi
+
+
+      # -----------------------------------------------------------------
+      # SCHEMATIC EXPORTS (ALWAYS RUN)
+      # -----------------------------------------------------------------
       - name: Export schematic PDF
-        run: kicad-cli sch export pdf "$PROJECT_NAME.kicad_sch" -o outputs/schematic.pdf
+        run: |
+          kicad-cli sch export pdf \
+            "${PROJECT_NAME}.kicad_sch" \
+            -o outputs/schematic.pdf
 
       - name: Generate BOM
-        run: kicad-cli sch export bom "$PROJECT_NAME.kicad_sch" -o outputs/bom.csv
+        run: |
+          kicad-cli sch export bom \
+            "${PROJECT_NAME}.kicad_sch" \
+            -o outputs/bom.csv
 
       - name: Run ERC
-        run: kicad-cli sch run-erc "$PROJECT_NAME.kicad_sch" --output outputs/erc.txt
+        run: |
+          kicad-cli sch erc \
+            "${PROJECT_NAME}.kicad_sch" \
+            --output outputs/erc.txt
 
-      # -----------------------------------------------------
-      # PCB EXPORT (only if HAS_PCB=true)
-      # -----------------------------------------------------
 
+      # -----------------------------------------------------------------
+      # PCB EXPORTS (ONLY IF HAS_PCB = true)
+      # -----------------------------------------------------------------
       - name: Export PCB PDF
         if: env.HAS_PCB == 'true'
-        run: kicad-cli pcb export pdf "$PROJECT_NAME.kicad_pcb" -o outputs/pcb.pdf
+        run: |
+          kicad-cli pcb export pdf \
+            "${PROJECT_NAME}.kicad_pcb" \
+            -o outputs/pcb.pdf
 
       - name: Run DRC
         if: env.HAS_PCB == 'true'
-        run: kicad-cli pcb run-drc "$PROJECT_NAME.kicad_pcb" --output outputs/drc.txt
+        run: |
+          kicad-cli pcb drc \
+            "${PROJECT_NAME}.kicad_pcb" \
+            --output outputs/drc.txt
 
-      # -----------------------------------------------------
-      # OUTPUT ARTIFACTS
-      # -----------------------------------------------------
+
+      # -----------------------------------------------------------------
+      # ARTIFACT UPLOAD
+      # -----------------------------------------------------------------
       - name: Upload KiCad outputs
         uses: actions/upload-artifact@v4
         with:
