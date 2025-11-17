@@ -718,6 +718,76 @@
 	)
 	(symbol
 		(lib_id "Device:R")
+		(at 84.7122 125.1109 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "104a6cb2-7d7c-4729-a925-d43dfb399e12")
+		(property "Reference" "R4"
+			(at 87.2522 123.8408 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "R"
+			(at 87.2522 126.3808 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 82.9342 125.1109 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 84.7122 125.1109 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 84.7122 125.1109 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "9fe5764e-d232-4ae0-a085-717cf4411332")
+		)
+		(pin "2"
+			(uuid "935bdea4-5b97-4480-b2c4-b182d3b4e460")
+		)
+		(instances
+			(project "test"
+				(path "/836c9f6e-8dd0-464b-ba6e-14d2ae20270a"
+					(reference "R4")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
 		(at 77.6053 97.3766 0)
 		(unit 1)
 		(exclude_from_sim no)
