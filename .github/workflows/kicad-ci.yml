@@ -1,79 +1,72 @@
-name: KiCad CI
+name: KiCad 9 CI
 
 on:
   push:
+    branches: [ "main" ]
     paths:
-      - "**/*.kicad_sch"
-      - "**/*.kicad_pcb"
-      - "**/*.kicad_pro"
-      - "**/*.kicad_prl"
-      - "**/*.kicad_sym"
-      - "**/*.kicad_mod"
-      - ".github/workflows/kicad-ci.yml"
+      - "*.kicad_sch"
+      - "*.kicad_pcb"
+      - "*.kicad_pro"
+      - "*.kicad_sym"
+      - "*.kicad_mod"
+      - "sym-lib-table"
+      - "fp-lib-table"
+
   pull_request:
     paths:
-      - "**/*.kicad_sch"
-      - "**/*.kicad_pcb"
-      - "**/*.kicad_pro"
-      - ".github/workflows/kicad-ci.yml"
+      - "*.kicad_sch"
+      - "*.kicad_pcb"
+      - "*.kicad_pro"
+      - "*.kicad_sym"
+      - "*.kicad_mod"
+      - "sym-lib-table"
+      - "fp-lib-table"
+
+  workflow_dispatch:
+
+env:
+  PROJECT_NAME: test   # <-- change this to match your .kicad_sch file
 
 jobs:
-  kicad-ci:
+  build:
     runs-on: ubuntu-latest
 
-    env:
-      PROJECT_NAME: "test"   # <-- CHANGE THIS TO MATCH YOUR .kicad_pro/.kicad_sch FILE
+    container:
+      image: ghcr.io/kicad/kicad:9.0
+      options: --user root
 
     steps:
-      # -------------------------------------------------------------
-      # CHECKOUT
-      # -------------------------------------------------------------
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # -------------------------------------------------------------
-      # INSTALL KICAD 9 (ONLY IF NOT INSTALLED)
-      # -------------------------------------------------------------
-      - name: Check if KiCad 9 is installed
-        id: check_kicad
+      - name: Show KiCad version
+        run: kicad-cli --version
+
+      - name: Prepare output directory
+        run: mkdir -p outputs
+
+
+      # -----------------------------------------------------------------
+      # CHECK WHETHER THE PCB FILE EXISTS AND HAS LAYERS
+      # -----------------------------------------------------------------
+      - id: check_pcb
+        name: Detect PCB layers
         run: |
-          if command -v kicad-cli >/dev/null 2>&1; then
-            echo "installed=true" >> $GITHUB_OUTPUT
+          PCB_FILE="${PROJECT_NAME}.kicad_pcb"
+
+          if [ ! -f "$PCB_FILE" ]; then
+            echo "HAS_PCB=false" >> $GITHUB_ENV
+            echo "No PCB file found. Skipping PCB tasks."
+            exit 0
+          fi
+
+          if grep -q "(layer" "$PCB_FILE"; then
+            echo "HAS_PCB=true" >> $GITHUB_ENV
+            echo "PCB contains layers."
           else
-            echo "installed=false" >> $GITHUB_OUTPUT
+            echo "HAS_PCB=false" >> $GITHUB_ENV
+            echo "PCB contains NO layers. Skipping PCB tasks."
           fi
-
-      - name: Install KiCad 9
-        if: steps.check_kicad.outputs.installed == 'false'
-        run: |
-          sudo add-apt-repository -y ppa:kicad/kicad-9.0-releases
-          sudo apt-get update
-          sudo apt-get install -y kicad kicad-cli
-
-      # -------------------------------------------------------------
-      # VALIDATE PROJECT FILES
-      # -------------------------------------------------------------
-      - name: Find KiCad project files
-        id: find_files
-        run: |
-          SCH=$(find . -maxdepth 2 -name "${PROJECT_NAME}.kicad_sch" | head -n 1)
-          PCB=$(find . -maxdepth 2 -name "${PROJECT_NAME}.kicad_pcb" | head -n 1)
-          echo "sch_file=$SCH" >> $GITHUB_OUTPUT
-          echo "pcb_file=$PCB" >> $GITHUB_OUTPUT
-
-          if [ -z "$SCH" ]; then
-            echo "ERROR: Schematic file not found."
-            exit 1
-          fi
-
-      # -------------------------------------------------------------
-      # CREATE OUTPUT FOLDERS
-      # -------------------------------------------------------------
-      - name: Prepare output directories
-        run: |
-          mkdir -p outputs/schematic
-          mkdir -p outputs/pcb
-          mkdir -p outputs/pdf
 
       # -------------------------------------------------------------
       # RUN ERC (FAILS IF ERRORS FOUND)
