@@ -103,8 +103,11 @@ jobs:
 
           echo "has_pcb=true" >> $GITHUB_OUTPUT
 
-          # Extract copper layer count (KiCad 8/9 JSON output)
+          # Extract copper layer count
           LAYERS=$(kicad-cli pcb export info --format json "$PCB" | jq '.copper_layers')
+
+          # Trim whitespace
+          LAYERS=$(echo "$LAYERS" | xargs)
 
           echo "layers=$LAYERS" >> $GITHUB_OUTPUT
 
@@ -113,27 +116,37 @@ jobs:
           else
             echo "has_layers=false" >> $GITHUB_OUTPUT
           fi
+      - name: Debug PCB flags
+        run: |
+          echo "has_pcb = '${{ steps.check_layers.outputs.has_pcb }}'"
+          echo "has_layers = '${{ steps.check_layers.outputs.has_layers }}'"
+          echo "layers raw = '${{ steps.check_layers.outputs.layers }}'"
 
       # -------------------------------------------------------------
       # RUN DRC (FAIL IF ERRORS, ONLY IF PCB HAS LAYERS)
       # -------------------------------------------------------------
       - name: Run DRC (Fail on errors)
-        if: steps.check_layers.outputs.has_pcb == 'true' && steps.check_layers.outputs.has_layers == 'true'
+        if: >
+          steps.check_layers.outputs.has_pcb == 'true' &&
+          steps.check_layers.outputs.has_layers == 'true'
         run: |
-          echo "Running DRC..."
           kicad-cli pcb drc "${PROJECT_NAME}.kicad_pcb" \
             --output outputs/pcb/drc_report.txt
         continue-on-error: false
+
 
 
       # -------------------------------------------------------------
       # EXPORT PCB PDF (ONLY IF BOARD HAS LAYERS)
       # -------------------------------------------------------------
       - name: Export PCB PDF
-        if: steps.check_layers.outputs.has_pcb == 'true' && steps.check_layers.outputs.has_layers == 'true'
+        if: >
+          steps.check_layers.outputs.has_pcb == 'true' &&
+          steps.check_layers.outputs.has_layers == 'true'
         run: |
           kicad-cli pcb export pdf "${PROJECT_NAME}.kicad_pcb" \
             --output outputs/pdf/pcb.pdf
+
 
 
       # -------------------------------------------------------------
