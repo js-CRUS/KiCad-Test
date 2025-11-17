@@ -85,7 +85,7 @@ jobs:
         run: |
           echo "Exporting schematic PDF..."
           kicad-cli sch export pdf "${PROJECT_NAME}.kicad_sch" \
-            --output outputs/pdf/schematic.pdf
+            --output outputs/schematic/schematic.pdf
 
      
 
@@ -107,7 +107,7 @@ jobs:
         run: |
           kicad-cli pcb export pdf "${PROJECT_NAME}.kicad_pcb" \
           --layers F.Cu,B.Cu \
-          --output copper_layers.pdf
+          --output outputs/pcb/copper_layers.pdf
 
 
 
